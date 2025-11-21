@@ -7,9 +7,6 @@ from pathlib import Path
 from sklearn.metrics import f1_score, roc_auc_score
 from ultralytics import YOLO
 
-# ===================================================================
-# 1. DEFINIÇÃO DE FUNÇÕES E VARIÁVEIS GLOBAIS
-# ===================================================================
 
 def plot_confusion(cm, class_names, title='Matriz de Confusão'):
     """Plota uma matriz de confusão de forma legível."""
@@ -26,13 +23,11 @@ CLASSES = ['keratoconus', 'normal']
 MODEL_VERSION = "yolo11n-cls.pt" 
 
 
-
 print("Analisando a distribuição do dataset...")
 counts = {}
 for subset in ['train', 'val', 'test']:
     counts[subset] = {}
     for cls in CLASSES:
-        
         class_path = BASE_DIR / subset / cls
         if class_path.exists():
             counts[subset][cls] = len(list(class_path.glob('*.*')))
@@ -53,11 +48,11 @@ model_yolo = YOLO(MODEL_VERSION)
 print("Iniciando o treinamento do modelo YOLO...")
 start_time = time.time()
 model_yolo.train(
-    data=str(BASE_DIR), # A função train espera uma string
+    data=str(BASE_DIR),
     epochs=3,
     imgsz=224,
     batch=32,
-    seed=42, # Adicionado para reprodutibilidade
+    seed=42,
     flipud=0.5,
     fliplr=0.5,
     degrees=15,
@@ -86,7 +81,6 @@ y_pred_yolo = []
 y_prob_yolo = []
 
 for r in results:
-
     true_label_name = Path(r.path).parent.name
     true_label_index = CLASSES.index(true_label_name)
     y_true_yolo.append(true_label_index)

@@ -2,7 +2,6 @@ import os
 import time
 import numpy as np
 import pandas as pd
-# Adicionado precision_score e recall_score
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, precision_score, recall_score 
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
@@ -10,7 +9,6 @@ from ultralytics import YOLO
 import torch
 from PIL import Image
 
-# ========== Configurações ==========
 keras_model_path = 'modeloFinalNaoAguentoMaisKeras.h5'
 yolo_model_path = 'Modelo_Yolov11_Improve_Final.pt'
 test_dir = 'test'
@@ -20,16 +18,15 @@ IMG_SIZE = (224, 224)
 BATCH_SIZE = 1
 N_EXECUCOES = 100
 
-# ========== Preparação ==========
 datagen = ImageDataGenerator(
     rescale=1. / 255,
-    rotation_range=20,      # Rotaciona as imagens aleatoriamente
-    width_shift_range=0.2,  # Desloca as imagens horizontalmente
-    height_shift_range=0.2, # Desloca as imagens verticalmente
-    shear_range=0.2,        # Aplica cisalhamento
-    zoom_range=0.2,         # Aplica zoom aleatório
-    horizontal_flip=True,   # Inverte as imagens horizontalmente
-    fill_mode='nearest'     # Preenche os pixels vazios após transformações
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
 )
 
 class_names = sorted(os.listdir(test_dir))
@@ -48,22 +45,17 @@ for cls_name in class_names:
 
 img_paths, labels = np.array(img_paths), np.array(labels)
 
-# ========== Modelos ==========
 keras_model = load_model(keras_model_path)
 yolo_model = YOLO(yolo_model_path)
 
-# ========== Resultados ==========
 def init_results_dict():
-    # Adicionado 'Precisão' e 'Recall' ao dicionário
     return {'Acurácia': [], 'Precisão': [], 'Recall': [], 'F1-score': [], 'AUC': [], 'Tempo Inferência (s)': []}
 
 keras_results = init_results_dict()
 yolo_results = init_results_dict()
 
-
 def calcular_metricas(model_preds, true_labels, model_name):
     accuracy = accuracy_score(true_labels, model_preds)
-
     precision = precision_score(true_labels, model_preds, zero_division=0)
     recall = recall_score(true_labels, model_preds, zero_division=0)
     f1 = f1_score(true_labels, model_preds, zero_division=0)
@@ -74,15 +66,10 @@ def calcular_metricas(model_preds, true_labels, model_name):
     return accuracy, precision, recall, f1, auc
 
 def aplicar_transformacoes(imagem, datagen):
-   
     img_array = np.array(imagem)
-
     img_array = img_array.reshape((1, *img_array.shape))
-
     img_aumentada = next(datagen.flow(img_array, batch_size=1))[0]
-
     img_aumentada = (img_aumentada * 255).astype(np.uint8)
-    
     return img_aumentada
 
 for rodada in range(N_EXECUCOES):
@@ -96,10 +83,9 @@ for rodada in range(N_EXECUCOES):
     for i in range(5):
         print(f"{shuffled_img_paths[i]} -> {shuffled_labels[i]}")
 
-
     temp_df = pd.DataFrame({
         'filename': shuffled_img_paths,
-        'class': shuffled_labels  # agora numérico
+        'class': shuffled_labels
     })
 
     keras_generator = datagen.flow_from_dataframe(
@@ -109,7 +95,7 @@ for rodada in range(N_EXECUCOES):
         target_size=IMG_SIZE,
         class_mode='raw',
         batch_size=BATCH_SIZE,
-        shuffle=False  # Embaralhamento controlado manualmente
+        shuffle=False
     )
 
     start = time.time()
@@ -121,7 +107,6 @@ for rodada in range(N_EXECUCOES):
     keras_accuracy, keras_precision, keras_recall, keras_f1, keras_auc = calcular_metricas(keras_pred_classes, shuffled_labels, "Keras")
 
     keras_results['Acurácia'].append(keras_accuracy)
-
     keras_results['Precisão'].append(keras_precision)
     keras_results['Recall'].append(keras_recall)
     keras_results['F1-score'].append(keras_f1)
@@ -132,7 +117,6 @@ for rodada in range(N_EXECUCOES):
     start = time.time()
 
     for path in shuffled_img_paths:
-
         img = Image.open(path)
         img = img.resize(IMG_SIZE) 
 
@@ -146,17 +130,14 @@ for rodada in range(N_EXECUCOES):
 
     elapsed = time.time() - start
 
-
     yolo_accuracy, yolo_precision, yolo_recall, yolo_f1, yolo_auc = calcular_metricas(yolo_preds, shuffled_labels, "YOLOv11")
 
     yolo_results['Acurácia'].append(yolo_accuracy)
-
     yolo_results['Precisão'].append(yolo_precision)
     yolo_results['Recall'].append(yolo_recall)
     yolo_results['F1-score'].append(yolo_f1)
     yolo_results['AUC'].append(yolo_auc)
     yolo_results['Tempo Inferência (s)'].append(elapsed)
-
 
 df_keras = pd.DataFrame(keras_results)
 df_yolo = pd.DataFrame(yolo_results)
